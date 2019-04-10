@@ -7,6 +7,9 @@ use Drupal\Core\Field\FieldItemInterface;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Field\FormatterBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Link;
+use Drupal\Core\Url;
+use Drupal\file\Entity\File;
 
 /**
  * Plugin implementation of the 'testimonial' formatter.
@@ -26,17 +29,29 @@ class TestimonialFormatter extends FormatterBase {
    */
   public static function defaultSettings() {
     return [
-      // Implement default settings.
-    ] + parent::defaultSettings();
+        'image_style' => '',
+      ] + parent::defaultSettings();
   }
 
   /**
    * {@inheritdoc}
    */
   public function settingsForm(array $form, FormStateInterface $form_state) {
-    return [
-      // Implement settings form.
-    ] + parent::settingsForm($form, $form_state);
+    $image_styles = image_style_options(FALSE);
+    $description_link = Link::fromTextAndUrl(
+      $this->t('Configure Image Styles'),
+      Url::fromRoute('entity.image_style.collection')
+    );
+    $element['image_style'] = [
+      '#title' => t('Image style'),
+      '#type' => 'select',
+      '#default_value' => $this->getSetting('image_style'),
+      '#empty_option' => t('None (original image)'),
+      '#options' => $image_styles,
+      '#description' => $description_link->toRenderable(),
+    ];
+
+    return $element;
   }
 
   /**
@@ -44,7 +59,19 @@ class TestimonialFormatter extends FormatterBase {
    */
   public function settingsSummary() {
     $summary = [];
-    // Implement settings summary.
+
+    $image_styles = image_style_options(FALSE);
+    // Unset possible 'No defined styles' option.
+    unset($image_styles['']);
+    // Styles could be lost because of enabled/disabled modules that defines
+    // their styles in code.
+    $image_style_setting = $this->getSetting('image_style');
+    if (isset($image_styles[$image_style_setting])) {
+      $summary[] = t('Image style: @style', ['@style' => $image_styles[$image_style_setting]]);
+    }
+    else {
+      $summary[] = t('Original image');
+    }
 
     return $summary;
   }
@@ -56,25 +83,36 @@ class TestimonialFormatter extends FormatterBase {
     $elements = [];
 
     foreach ($items as $delta => $item) {
-      $elements[$delta] = ['#markup' => $this->viewValue($item)];
+      $elements[$delta] = $this->viewValue($item);
     }
 
     return $elements;
   }
 
-  /**
-   * Generate the output appropriate for one field item.
-   *
-   * @param \Drupal\Core\Field\FieldItemInterface $item
-   *   One field item.
-   *
-   * @return string
-   *   The textual output generated.
-   */
   protected function viewValue(FieldItemInterface $item) {
-    // The text value has no text format assigned to it, so the user input
-    // should equal the output, including newlines.
-    return nl2br(Html::escape($item->value));
+    $image_style_setting = $this->getSetting('image_style');
+    $image = FALSE;
+    if($item->image) {
+      $image = File::load($item->image);
+    }
+    return [
+      '#theme' => 'testimonial',
+      '#content' => [
+        'lastname' => $item->lastname,
+        'firstname' => $item->firstname,
+        'country' => $item->country,
+        'content' => [
+          '#type' => 'processed_text',
+          '#text' => $item->content,
+          '#format' => $item->content_format,
+        ],
+        'image' => $image ? [
+          '#theme' => 'image_style',
+          '#style_name' => $image_style_setting,
+          '#uri' => $image->getFileUri(),
+        ] : NULL,
+      ]
+    ];
   }
 
 }
