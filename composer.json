@@ -1,0 +1,14 @@
+{
+  "name": "kgaut/testimonial_field",
+  "type": "drupal-module",
+  "description": "Define a field « testimonial »",
+  "keywords": ["Drupal"],
+  "license": "GPL-2.0+",
+  "homepage": "https://github.com/kgaut/drupal-testimonial-field",
+  "minimum-stability": "dev",
+  "support": {
+    "issues": "https://github.com/kgaut/drupal-testimonial-field/issues",
+    "source": "https://github.com/kgaut/drupal-testimonial-field"
+  },
+  "require": { }
+}

@@ -1,0 +1,24 @@
+<?php
+
+/**
+ * @file
+ * Contains testimonial_field.module.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_help().
+ */
+function testimonial_field_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the testimonial_field module.
+    case 'help.page.testimonial_field':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('Define a field « testimonial »') . '</p>';
+      return $output;
+
+    default:
+  }
+}
