@@ -137,7 +137,7 @@ class Testimonial extends FieldItemBase {
    * {@inheritdoc}
    */
   public function isEmpty() {
-    $value = $this->get('image')->getValue();
+    $value = $this->get('content')->getValue();
     return $value === NULL || $value === '';
   }
 
