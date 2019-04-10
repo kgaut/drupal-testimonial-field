@@ -2,6 +2,7 @@
 
 namespace Drupal\testimonial_field\Plugin\Field\FieldType;
 
+use Drupal\Component\Render\PlainTextOutput;
 use Drupal\Component\Utility\Random;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldItemBase;
@@ -9,6 +10,7 @@ use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\TypedData\DataDefinition;
+use Drupal\Core\TypedData\DataReferenceTargetDefinition;
 
 /**
  * Plugin implementation of the 'testimonial' field type.
@@ -23,26 +25,64 @@ use Drupal\Core\TypedData\DataDefinition;
  */
 class Testimonial extends FieldItemBase {
 
-  /**
-   * {@inheritdoc}
-   */
-  public static function defaultStorageSettings() {
+  public static function defaultFieldSettings() {
     return [
-      'max_length' => 255,
-      'is_ascii' => FALSE,
-      'case_sensitive' => FALSE,
-    ] + parent::defaultStorageSettings();
+        'file_directory' => 'public://',
+      ] + parent::defaultFieldSettings();
+  }
+
+  public static function validateDirectory($element, FormStateInterface $form_state) {
+    // Strip slashes from the beginning and end of $element['file_directory'].
+    $value = trim($element['#value'], '\\/');
+    $form_state->setValueForElement($element, $value);
+  }
+
+  public function fieldSettingsForm(array $form, FormStateInterface $form_state) {
+    $element = [];
+    $settings = $this->getSettings();
+
+    $element['file_directory'] = [
+      '#type' => 'textfield',
+      '#title' => t('File directory'),
+      '#default_value' => $settings['file_directory'],
+      '#description' => t('Optional subdirectory within the upload destination where files will be stored. Do not include preceding or trailing slashes.'),
+      '#element_validate' => [[get_class($this), 'validateDirectory']],
+      '#weight' => 3,
+    ];
+    return $element;
+  }
+
+  public function getUploadLocation($data = []) {
+    return static::doGetUploadLocation($this->getSettings(), $data);
+  }
+
+  public static function doGetUploadLocation(array $settings, $data = []) {
+    $destination = trim($settings['file_directory'], '/');
+    $destination = PlainTextOutput::renderFromHtml(\Drupal::token()->replace($destination, $data));
+    return $destination;
   }
 
   /**
    * {@inheritdoc}
    */
   public static function propertyDefinitions(FieldStorageDefinitionInterface $field_definition) {
-    // Prevent early t() calls by using the TranslatableMarkup.
-    $properties['value'] = DataDefinition::create('string')
-      ->setLabel(new TranslatableMarkup('Text value'))
-      ->setSetting('case_sensitive', $field_definition->getSetting('case_sensitive'))
-      ->setRequired(TRUE);
+    $properties['image'] = DataReferenceTargetDefinition::create('integer')
+      ->setLabel(new TranslatableMarkup('Picture file ID'));
+
+    $properties['lastname'] = DataDefinition::create('string')
+      ->setLabel(new TranslatableMarkup('Lastname'));
+
+    $properties['firstname'] = DataDefinition::create('string')
+      ->setLabel(new TranslatableMarkup('Firstname'));
+
+    $properties['country'] = DataDefinition::create('string')
+      ->setLabel(new TranslatableMarkup('Country'));
+
+    $properties['content'] = DataDefinition::create('string')
+      ->setLabel(t('Content'));
+
+    $properties['content_format'] = DataDefinition::create('filter_format')
+      ->setLabel(t('Content text format'));
 
     return $properties;
   }
@@ -53,10 +93,38 @@ class Testimonial extends FieldItemBase {
   public static function schema(FieldStorageDefinitionInterface $field_definition) {
     $schema = [
       'columns' => [
-        'value' => [
-          'type' => $field_definition->getSetting('is_ascii') === TRUE ? 'varchar_ascii' : 'varchar',
-          'length' => (int) $field_definition->getSetting('max_length'),
-          'binary' => $field_definition->getSetting('case_sensitive'),
+        'image' => [
+          'description' => 'Image file id',
+          'type' => 'int',
+          'unsigned' => TRUE,
+        ],
+        'lastname' => [
+          'description' => 'Lastname',
+          'type' => 'varchar',
+          'length' => 255,
+          'not null' => FALSE,
+        ],
+        'firstname' => [
+          'description' => 'Firstname',
+          'type' => 'varchar',
+          'length' => 255,
+          'not null' => FALSE,
+        ],
+        'country' => [
+          'description' => 'Country',
+          'type' => 'varchar',
+          'length' => 255,
+          'not null' => FALSE,
+        ],
+        'content' => [
+          'type' => 'text',
+          'size' => 'big',
+          'not null' => FALSE,
+        ],
+        'content_format' => [
+          'type' => 'varchar_ascii',
+          'length' => 255,
+          'not null' => FALSE,
         ],
       ],
     ];
@@ -67,60 +135,8 @@ class Testimonial extends FieldItemBase {
   /**
    * {@inheritdoc}
    */
-  public function getConstraints() {
-    $constraints = parent::getConstraints();
-
-    if ($max_length = $this->getSetting('max_length')) {
-      $constraint_manager = \Drupal::typedDataManager()->getValidationConstraintManager();
-      $constraints[] = $constraint_manager->create('ComplexData', [
-        'value' => [
-          'Length' => [
-            'max' => $max_length,
-            'maxMessage' => t('%name: may not be longer than @max characters.', [
-              '%name' => $this->getFieldDefinition()->getLabel(),
-              '@max' => $max_length
-            ]),
-          ],
-        ],
-      ]);
-    }
-
-    return $constraints;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public static function generateSampleValue(FieldDefinitionInterface $field_definition) {
-    $random = new Random();
-    $values['value'] = $random->word(mt_rand(1, $field_definition->getSetting('max_length')));
-    return $values;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function storageSettingsForm(array &$form, FormStateInterface $form_state, $has_data) {
-    $elements = [];
-
-    $elements['max_length'] = [
-      '#type' => 'number',
-      '#title' => t('Maximum length'),
-      '#default_value' => $this->getSetting('max_length'),
-      '#required' => TRUE,
-      '#description' => t('The maximum length of the field in characters.'),
-      '#min' => 1,
-      '#disabled' => $has_data,
-    ];
-
-    return $elements;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   public function isEmpty() {
-    $value = $this->get('value')->getValue();
+    $value = $this->get('image')->getValue();
     return $value === NULL || $value === '';
   }
 
