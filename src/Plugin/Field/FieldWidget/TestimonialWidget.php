@@ -5,6 +5,7 @@ namespace Drupal\testimonial_field\Plugin\Field\FieldWidget;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Field\WidgetBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\file\Entity\File;
 
 /**
  * Plugin implementation of the 'testimonial' widget.
@@ -45,7 +46,7 @@ class TestimonialWidget extends WidgetBase {
     ];
 
     $element['firstname'] = [
-      '#title' => 'Lastname',
+      '#title' => 'Firstname',
       '#type' => 'textfield',
       '#default_value' => isset($items[$delta]->firstname) ? $items[$delta]->firstname : NULL,
       '#size' => 60,
@@ -53,7 +54,7 @@ class TestimonialWidget extends WidgetBase {
     ];
 
     $element['country'] = [
-      '#title' => 'Lastname',
+      '#title' => 'Country',
       '#type' => 'textfield',
       '#default_value' => isset($items[$delta]->country) ? $items[$delta]->country : NULL,
       '#size' => 60,
@@ -76,6 +77,7 @@ class TestimonialWidget extends WidgetBase {
 
   public function massageFormValues(array $values, array $form, FormStateInterface $form_state) {
     foreach ($values as &$value) {
+      $value['image'] = \count($value['image']) === 1 ? array_pop($value['image']) : NULL;
       $content = $value['content'];
       $value['content_format'] = $content['format'];
       $value['content'] = $content['value'];

@@ -97,6 +97,7 @@ class Testimonial extends FieldItemBase {
           'description' => 'Image file id',
           'type' => 'int',
           'unsigned' => TRUE,
+          'not null' => FALSE
         ],
         'lastname' => [
           'description' => 'Lastname',
