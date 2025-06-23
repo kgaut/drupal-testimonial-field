@@ -32,8 +32,8 @@ class TestimonialWidget extends WidgetBase {
       '#multiple' => FALSE,
       '#description' => t('Allowed extensions: gif png jpg jpeg'),
       '#upload_validators' => [
-        'file_validate_is_image' => [],
-        'file_validate_extensions' => ['gif png jpg jpeg'],
+        'FileIsImage' => [],
+        'FileExtension' => ['extensions' => 'gif png jpg jpeg'],
       ],
     ];
 
